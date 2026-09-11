@@ -15,6 +15,7 @@
     flex-direction: column;
     align-items: center;
     padding: 40px;
+    position: relative;
   }
   h1 { margin-bottom: 10px; }
 
@@ -48,10 +49,6 @@
     cursor: pointer;
   }
   button:hover { background: #43a047; }
-  button:disabled {
-    background: #555;
-    cursor: not-allowed;
-  }
 
   #progress {
     font-size: 16px;
@@ -132,9 +129,89 @@
     opacity: 0;
     pointer-events: none;
   }
+
+  /* ===== Finger Guide ===== */
+  .finger-guide {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.9;
+  }
+  .finger-guide.left { left: 20px; }
+  .finger-guide.right { right: 20px; }
+
+  .hand {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    background: #2a2a3d;
+    padding: 14px 10px 10px;
+    border-radius: 16px 16px 40px 40px;
+  }
+  .hand.right { flex-direction: row-reverse; }
+
+  .finger {
+    width: 20px;
+    background: #444;
+    border-radius: 10px;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .finger.pinky { height: 55px; }
+  .finger.ring { height: 75px; }
+  .finger.middle { height: 85px; }
+  .finger.index { height: 70px; }
+  .finger.thumb {
+    width: 24px;
+    height: 45px;
+    align-self: flex-end;
+    border-radius: 12px;
+  }
+
+  .finger.active {
+    background: #4caf50;
+    box-shadow: 0 0 12px #4caf50;
+    transform: translateY(-6px);
+  }
+
+  .finger-label-box {
+    font-size: 13px;
+    color: #ccc;
+    text-align: center;
+    min-height: 18px;
+  }
+
+  @media (max-width: 1100px) {
+    .finger-guide { display: none; }
+  }
 </style>
 </head>
 <body>
+
+<div class="finger-guide left">
+  <div class="hand left">
+    <div class="finger pinky" data-finger="L5"></div>
+    <div class="finger ring" data-finger="L4"></div>
+    <div class="finger middle" data-finger="L3"></div>
+    <div class="finger index" data-finger="L2"></div>
+    <div class="finger thumb" data-finger="THUMB"></div>
+  </div>
+  <div class="finger-label-box" id="leftLabel"></div>
+</div>
+
+<div class="finger-guide right">
+  <div class="hand right">
+    <div class="finger pinky" data-finger="R5"></div>
+    <div class="finger ring" data-finger="R4"></div>
+    <div class="finger middle" data-finger="R3"></div>
+    <div class="finger index" data-finger="R2"></div>
+    <div class="finger thumb" data-finger="THUMB"></div>
+  </div>
+  <div class="finger-label-box" id="rightLabel"></div>
+</div>
 
 <h1>Code Typing Practice</h1>
 
@@ -236,6 +313,30 @@ const snippetSets = {
   ]
 };
 
+/* ===== Finger mapping (standard touch typing layout) ===== */
+const fingerMap = {
+  "`": "L5", "1": "L5", "q": "L5", "a": "L5", "z": "L5",
+  "2": "L4", "w": "L4", "s": "L4", "x": "L4",
+  "3": "L3", "e": "L3", "d": "L3", "c": "L3",
+  "4": "L2", "r": "L2", "f": "L2", "v": "L2",
+  "5": "L2", "t": "L2", "g": "L2", "b": "L2",
+  "6": "R2", "y": "R2", "h": "R2", "n": "R2",
+  "7": "R2", "u": "R2", "j": "R2", "m": "R2",
+  "8": "R3", "i": "R3", "k": "R3", ",": "R3",
+  "9": "R4", "o": "R4", "l": "R4", ".": "R4",
+  "0": "R5", "p": "R5", ";": "R5", "/": "R5",
+  "-": "R5", "=": "R5", "[": "R5", "]": "R5", "\\": "R5", "'": "R5",
+  " ": "THUMB",
+  "\n": "R5",
+  "\t": "L5"
+};
+
+const fingerNames = {
+  L5: "左手 小指", L4: "左手 薬指", L3: "左手 中指", L2: "左手 人差し指",
+  R2: "右手 人差し指", R3: "右手 中指", R4: "右手 薬指", R5: "右手 小指",
+  THUMB: "親指"
+};
+
 const TOTAL_QUESTIONS = 10;
 
 let selectedLangs = [];
@@ -268,6 +369,8 @@ const questionResultEl = document.getElementById("questionResult");
 const nextBtn = document.getElementById("nextBtn");
 const finalResultEl = document.getElementById("finalResult");
 const restartBtn = document.getElementById("restartBtn");
+const leftLabel = document.getElementById("leftLabel");
+const rightLabel = document.getElementById("rightLabel");
 
 function isJapaneseMode() {
   return currentLang === "japanese";
@@ -304,6 +407,33 @@ function keyLabel(ch) {
   return ch;
 }
 
+function updateFingerGuide() {
+  document.querySelectorAll(".finger").forEach(el => el.classList.remove("active"));
+  leftLabel.textContent = "";
+  rightLabel.textContent = "";
+
+  if (isJapaneseMode()) return;
+
+  const ch = targetText[typedIndex];
+  if (ch === undefined) return;
+
+  const lower = ch.toLowerCase();
+  const finger = fingerMap[lower];
+  if (!finger) return;
+
+  document.querySelectorAll(`[data-finger="${finger}"]`).forEach(el => el.classList.add("active"));
+
+  const label = fingerNames[finger];
+  if (finger === "THUMB") {
+    leftLabel.textContent = label;
+    rightLabel.textContent = label;
+  } else if (finger.startsWith("L")) {
+    leftLabel.textContent = label;
+  } else {
+    rightLabel.textContent = label;
+  }
+}
+
 function renderTarget() {
   let html = "";
   for (let i = 0; i < targetText.length; i++) {
@@ -333,6 +463,7 @@ function renderTarget() {
     if (ch === "\n") html += "<br>";
   }
   targetEl.innerHTML = html;
+  updateFingerGuide();
 }
 
 function resetPerQuestionState() {
@@ -434,6 +565,10 @@ function finishQuestion() {
   targetEl.style.display = "none";
   imeInput.style.display = "none";
   questionResultEl.style.display = "block";
+
+  document.querySelectorAll(".finger").forEach(el => el.classList.remove("active"));
+  leftLabel.textContent = "";
+  rightLabel.textContent = "";
 
   nextBtn.textContent = currentIndex + 1 >= TOTAL_QUESTIONS
     ? "Show Final Result"
