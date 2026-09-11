@@ -1,0 +1,232 @@
+<!-- Output: html -->
+<!-- File: index.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Typing Practice</title>
+<style>
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    background: #1e1e2f;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px;
+  }
+  h1 {
+    margin-bottom: 10px;
+  }
+  #target {
+    font-size: 28px;
+    letter-spacing: 2px;
+    margin: 20px 0;
+    padding: 20px;
+    background: #2a2a3d;
+    border-radius: 8px;
+    max-width: 800px;
+    line-height: 1.6;
+  }
+  .correct { color: #4caf50; }
+  .wrong { color: #f44336; text-decoration: underline; }
+  .remaining { color: #888; }
+  #stats {
+    display: flex;
+    gap: 30px;
+    margin: 20px 0;
+    font-size: 18px;
+  }
+  #result {
+    margin-top: 20px;
+    font-size: 20px;
+    background: #2a2a3d;
+    padding: 20px;
+    border-radius: 8px;
+    display: none;
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background: #4caf50;
+    color: white;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #43a047;
+  }
+  #hiddenInput {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>Typing Practice</h1>
+<div id="stats">
+  <div>Time: <span id="time">0.0</span>s</div>
+  <div>WPM: <span id="wpm">0</span></div>
+  <div>Accuracy: <span id="accuracy">100</span>%</div>
+  <div>Miss: <span id="missCount">0</span></div>
+</div>
+
+<div id="target"></div>
+<input type="text" id="hiddenInput" autofocus>
+
+<div id="result">
+  <h2>Result</h2>
+  <p>Time: <span id="resTime"></span>s</p>
+  <p>WPM: <span id="resWpm"></span></p>
+  <p>Accuracy: <span id="resAcc"></span>%</p>
+  <p>Miss Keys: <span id="resMissKeys"></span></p>
+</div>
+
+<button onclick="resetGame()">Restart</button>
+
+<script>
+const sentences = [
+  "the quick brown fox jumps over the lazy dog",
+  "typing practice makes your fingers faster",
+  "github pages is a free way to host static sites",
+  "javascript runs in the browser without installation",
+  "consistency is more important than raw speed"
+];
+
+let targetText = "";
+let typedIndex = 0;
+let startTime = null;
+let timerInterval = null;
+let missCount = 0;
+let totalTyped = 0;
+let missKeyMap = {};
+let finished = false;
+
+const targetEl = document.getElementById("target");
+const hiddenInput = document.getElementById("hiddenInput");
+const timeEl = document.getElementById("time");
+const wpmEl = document.getElementById("wpm");
+const accuracyEl = document.getElementById("accuracy");
+const missCountEl = document.getElementById("missCount");
+const resultEl = document.getElementById("result");
+
+function pickSentence() {
+  return sentences[Math.floor(Math.random() * sentences.length)];
+}
+
+function renderTarget() {
+  let html = "";
+  for (let i = 0; i < targetText.length; i++) {
+    const char = targetText[i];
+    if (i < typedIndex) {
+      html += `<span class="correct">${char}</span>`;
+    } else {
+      html += `<span class="remaining">${char}</span>`;
+    }
+  }
+  targetEl.innerHTML = html;
+}
+
+function startGame() {
+  targetText = pickSentence();
+  typedIndex = 0;
+  startTime = null;
+  missCount = 0;
+  totalTyped = 0;
+  missKeyMap = {};
+  finished = false;
+  resultEl.style.display = "none";
+  renderTarget();
+  hiddenInput.value = "";
+  hiddenInput.focus();
+  timeEl.textContent = "0.0";
+  wpmEl.textContent = "0";
+  accuracyEl.textContent = "100";
+  missCountEl.textContent = "0";
+  clearInterval(timerInterval);
+}
+
+function startTimerIfNeeded() {
+  if (startTime === null) {
+    startTime = Date.now();
+    timerInterval = setInterval(updateStats, 100);
+  }
+}
+
+function updateStats() {
+  const elapsed = (Date.now() - startTime) / 1000;
+  timeEl.textContent = elapsed.toFixed(1);
+  const minutes = elapsed / 60;
+  const wpm = minutes > 0 ? Math.round((typedIndex / 5) / minutes) : 0;
+  wpmEl.textContent = wpm;
+  const accuracy = totalTyped > 0
+    ? Math.max(0, Math.round(((totalTyped - missCount) / totalTyped) * 100))
+    : 100;
+  accuracyEl.textContent = accuracy;
+  missCountEl.textContent = missCount;
+}
+
+function finishGame() {
+  finished = true;
+  clearInterval(timerInterval);
+  const elapsed = (Date.now() - startTime) / 1000;
+  const minutes = elapsed / 60;
+  const wpm = minutes > 0 ? Math.round((targetText.length / 5) / minutes) : 0;
+  const accuracy = totalTyped > 0
+    ? Math.max(0, Math.round(((totalTyped - missCount) / totalTyped) * 100))
+    : 100;
+
+  const missKeysSorted = Object.entries(missKeyMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([key, count]) => `${key}(${count})`)
+    .join(", ") || "None";
+
+  document.getElementById("resTime").textContent = elapsed.toFixed(1);
+  document.getElementById("resWpm").textContent = wpm;
+  document.getElementById("resAcc").textContent = accuracy;
+  document.getElementById("resMissKeys").textContent = missKeysSorted;
+
+  resultEl.style.display = "block";
+}
+
+hiddenInput.addEventListener("input", (e) => {
+  if (finished) return;
+  startTimerIfNeeded();
+
+  const inputChars = hiddenInput.value.split("");
+  const lastChar = inputChars[inputChars.length - 1];
+
+  if (typedIndex < targetText.length) {
+    totalTyped++;
+    if (lastChar === targetText[typedIndex]) {
+      typedIndex++;
+    } else {
+      missCount++;
+      missKeyMap[lastChar] = (missKeyMap[lastChar] || 0) + 1;
+    }
+  }
+
+  hiddenInput.value = "";
+  renderTarget();
+
+  if (typedIndex >= targetText.length) {
+    finishGame();
+  }
+});
+
+function resetGame() {
+  startGame();
+}
+
+document.body.addEventListener("click", () => hiddenInput.focus());
+
+startGame();
+</script>
+
+</body>
+</html>
