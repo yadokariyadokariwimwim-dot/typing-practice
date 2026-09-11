@@ -4,8 +4,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Typing Practice</title>
+<title>Code Typing Practice</title>
 <style>
+  * {
+    box-sizing: border-box;
+  }
   body {
     font-family: "Helvetica Neue", Arial, sans-serif;
     background: #1e1e2f;
@@ -18,56 +21,109 @@
   h1 {
     margin-bottom: 10px;
   }
-  #target {
-    font-size: 28px;
-    letter-spacing: 2px;
-    margin: 20px 0;
-    padding: 20px;
-    background: #2a2a3d;
-    border-radius: 8px;
-    max-width: 800px;
-    line-height: 1.6;
+  #controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
   }
-  .correct { color: #4caf50; }
-  .wrong { color: #f44336; text-decoration: underline; }
-  .remaining { color: #888; }
+  select, button {
+    padding: 8px 14px;
+    font-size: 15px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  select {
+    background: #2a2a3d;
+    color: #eee;
+  }
+  button {
+    background: #4caf50;
+    color: white;
+  }
+  button:hover {
+    background: #43a047;
+  }
   #stats {
     display: flex;
     gap: 30px;
-    margin: 20px 0;
-    font-size: 18px;
+    margin: 10px 0 20px;
+    font-size: 16px;
+  }
+  #target {
+    font-family: "Consolas", "Menlo", "Courier New", monospace;
+    font-size: 20px;
+    line-height: 1.9;
+    padding: 24px;
+    background: #2a2a3d;
+    border-radius: 8px;
+    max-width: 800px;
+    min-height: 200px;
+    white-space: pre-wrap;
+  }
+  .correct {
+    color: #4caf50;
+  }
+  .wrong {
+    color: #f44336;
+    background: rgba(244, 67, 54, 0.25);
+    border-radius: 3px;
+  }
+  .current {
+    background: #565672;
+    border-radius: 3px;
+    outline: 2px solid #8888ff;
+  }
+  .remaining {
+    color: #888;
+  }
+  .space-symbol {
+    font-size: 14px;
+    vertical-align: middle;
+    opacity: 0.75;
+  }
+  .newline-symbol {
+    opacity: 0.6;
   }
   #result {
     margin-top: 20px;
-    font-size: 20px;
+    font-size: 18px;
     background: #2a2a3d;
     padding: 20px;
     border-radius: 8px;
     display: none;
-  }
-  button {
-    margin-top: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 6px;
-    background: #4caf50;
-    color: white;
-    cursor: pointer;
-  }
-  button:hover {
-    background: #43a047;
+    max-width: 800px;
+    width: 100%;
   }
   #hiddenInput {
     position: absolute;
     opacity: 0;
     pointer-events: none;
   }
+  .legend {
+    font-size: 13px;
+    color: #999;
+    margin-top: 10px;
+  }
 </style>
 </head>
 <body>
 
-<h1>Typing Practice</h1>
+<h1>Code Typing Practice</h1>
+
+<div id="controls">
+  <select id="langSelect">
+    <option value="random">Random (All)</option>
+    <option value="python">Python</option>
+    <option value="javascript">JavaScript</option>
+    <option value="html">HTML</option>
+    <option value="c">C</option>
+    <option value="java">Java</option>
+  </select>
+  <button onclick="startGame()">New Code</button>
+</div>
+
 <div id="stats">
   <div>Time: <span id="time">0.0</span>s</div>
   <div>WPM: <span id="wpm">0</span></div>
@@ -76,6 +132,8 @@
 </div>
 
 <div id="target"></div>
+<div class="legend">␣ = スペースキー / ↵ = Enterキー を表しています</div>
+
 <input type="text" id="hiddenInput" autofocus>
 
 <div id="result">
@@ -86,16 +144,30 @@
   <p>Miss Keys: <span id="resMissKeys"></span></p>
 </div>
 
-<button onclick="resetGame()">Restart</button>
-
 <script>
-const sentences = [
-  "the quick brown fox jumps over the lazy dog",
-  "typing practice makes your fingers faster",
-  "github pages is a free way to host static sites",
-  "javascript runs in the browser without installation",
-  "consistency is more important than raw speed"
-];
+const snippetSets = {
+  python: [
+    "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)",
+    "for i in range(1, 21):\n    if i % 15 == 0:\n        print(\"FizzBuzz\")\n    elif i % 3 == 0:\n        print(\"Fizz\")\n    elif i % 5 == 0:\n        print(\"Buzz\")\n    else:\n        print(i)",
+    "class Animal:\n    def __init__(self, name):\n        self.name = name\n\n    def speak(self):\n        return f\"{self.name} makes a sound\""
+  ],
+  javascript: [
+    "function greet(name) {\n    console.log(`Hello, ${name}!`);\n}",
+    "const numbers = [1, 2, 3, 4, 5];\nconst evens = numbers.filter(n => n % 2 === 0);\nconsole.log(evens);",
+    "async function getData(url) {\n    const res = await fetch(url);\n    const data = await res.json();\n    return data;\n}"
+  ],
+  html: [
+    "<div class=\"container\">\n    <p>Hello World</p>\n</div>",
+    "<form action=\"/submit\" method=\"post\">\n    <input type=\"text\" name=\"username\">\n    <button type=\"submit\">Send</button>\n</form>"
+  ],
+  c: [
+    "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, World!\\n\");\n    return 0;\n}",
+    "#include <stdio.h>\n\nint main() {\n    for (int i = 0; i < 10; i++) {\n        printf(\"%d\\n\", i);\n    }\n    return 0;\n}"
+  ],
+  java: [
+    "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}"
+  ]
+};
 
 let targetText = "";
 let typedIndex = 0;
@@ -113,26 +185,64 @@ const wpmEl = document.getElementById("wpm");
 const accuracyEl = document.getElementById("accuracy");
 const missCountEl = document.getElementById("missCount");
 const resultEl = document.getElementById("result");
+const langSelect = document.getElementById("langSelect");
 
-function pickSentence() {
-  return sentences[Math.floor(Math.random() * sentences.length)];
+function pickSnippet() {
+  const lang = langSelect.value;
+  let pool = [];
+  if (lang === "random") {
+    Object.values(snippetSets).forEach(arr => pool = pool.concat(arr));
+  } else {
+    pool = snippetSets[lang];
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function escapeHtml(ch) {
+  const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" };
+  return map[ch] || ch;
+}
+
+function keyLabel(ch) {
+  if (ch === " ") return "Space";
+  if (ch === "\n") return "Enter";
+  if (ch === "\t") return "Tab";
+  return ch;
 }
 
 function renderTarget() {
   let html = "";
   for (let i = 0; i < targetText.length; i++) {
-    const char = targetText[i];
-    if (i < typedIndex) {
-      html += `<span class="correct">${char}</span>`;
+    const ch = targetText[i];
+    let displayChar;
+    let extraClass = "";
+
+    if (ch === " ") {
+      displayChar = "&#9251;";
+      extraClass = "space-symbol";
+    } else if (ch === "\n") {
+      displayChar = "&#8626;";
+      extraClass = "newline-symbol";
+    } else if (ch === "\t") {
+      displayChar = "&#8594;";
+      extraClass = "tab-symbol";
     } else {
-      html += `<span class="remaining">${char}</span>`;
+      displayChar = escapeHtml(ch);
     }
+
+    let stateClass;
+    if (i < typedIndex) stateClass = "correct";
+    else if (i === typedIndex) stateClass = "current";
+    else stateClass = "remaining";
+
+    html += `<span class="${stateClass} ${extraClass}">${displayChar}</span>`;
+    if (ch === "\n") html += "<br>";
   }
   targetEl.innerHTML = html;
 }
 
 function startGame() {
-  targetText = pickSentence();
+  targetText = pickSnippet();
   typedIndex = 0;
   startTime = null;
   missCount = 0;
@@ -194,24 +304,34 @@ function finishGame() {
   resultEl.style.display = "block";
 }
 
-hiddenInput.addEventListener("input", (e) => {
+hiddenInput.addEventListener("keydown", (e) => {
   if (finished) return;
-  startTimerIfNeeded();
 
-  const inputChars = hiddenInput.value.split("");
-  const lastChar = inputChars[inputChars.length - 1];
+  let typedChar = null;
 
-  if (typedIndex < targetText.length) {
-    totalTyped++;
-    if (lastChar === targetText[typedIndex]) {
-      typedIndex++;
-    } else {
-      missCount++;
-      missKeyMap[lastChar] = (missKeyMap[lastChar] || 0) + 1;
-    }
+  if (e.key === "Enter") {
+    typedChar = "\n";
+  } else if (e.key === "Tab") {
+    typedChar = "\t";
+  } else if (e.key.length === 1) {
+    typedChar = e.key;
+  } else {
+    return;
   }
 
-  hiddenInput.value = "";
+  e.preventDefault();
+  startTimerIfNeeded();
+  totalTyped++;
+
+  const expected = targetText[typedIndex];
+  if (typedChar === expected) {
+    typedIndex++;
+  } else {
+    missCount++;
+    const label = keyLabel(typedChar);
+    missKeyMap[label] = (missKeyMap[label] || 0) + 1;
+  }
+
   renderTarget();
 
   if (typedIndex >= targetText.length) {
@@ -219,11 +339,8 @@ hiddenInput.addEventListener("input", (e) => {
   }
 });
 
-function resetGame() {
-  startGame();
-}
-
 document.body.addEventListener("click", () => hiddenInput.focus());
+langSelect.addEventListener("change", startGame);
 
 startGame();
 </script>
